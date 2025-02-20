@@ -1,0 +1,190 @@
+---
+title: "SDS Homework 4"
+author: "Daphne Huynh - gdh853"
+output: pdf_document
+---
+
+```{r global_options, echo=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=7.5, fig.align = "center", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), message=FALSE, echo = FALSE)
+```
+
+```{r}
+#libraries needed
+
+library(mosaic)
+library(ggplot2)
+library(tidyverse)
+library(kableExtra)
+```
+#### \href{https://github.com/giahandhuynh/315homework4}{\textcolor{blue}{GitHub Repository}}
+
+# 1.
+
+##### Null Hypothesis: Over the long run, securities trades from the Iron Bank are flagged at the same 2.4% baseline rate as that of other traders.
+
+##### Test Statistic: 70 trades being flagged out 2021 trades made by Iron Bank.
+
+
+```{r}
+set.seed(2)
+simflagged <- do(100000)*nflip(n = 2021, prob = 0.024)
+
+ggplot(simflagged) + geom_histogram(aes(x = nflip), fill = 'plum4', col = 'black')
+```
+
+```{r results = 'hide'}
+format((sum(simflagged >= 70))/100000, scientific = FALSE)
+``` 
+
+##### P-Value: For this simulation, the p value calculated was equal to 0.002,  or a 0.2% probability that 70 out of 2021 trades would be flagged assuming that the null hypothesis is true.
+
+##### Conclusion: Based off this data and the p-value being less than 1%, the null hypothesis does not seem plausible, therefore it is not likely that Iron Bank was only flagged at the baseline rate.
+
+\newpage
+
+# 2.
+
+##### Null Hypothesis: The health code violations of Gourmet Bites are within the 3% of the inspections of well-managed establishments that still get reported due to random issues.
+
+##### Test Statistic: 8 health code violations during 50 separate inspections of Gourmet Bites.
+
+
+```{r}
+set.seed(2)
+simhealthcode <- do(100000)*nflip(n = 50, prob = 0.03)
+
+ggplot(simhealthcode) + geom_histogram(aes(x = nflip), fill = 'plum4', col = 'black', binwidth=1)
+```
+
+```{r results = 'hide'}
+format((sum(simhealthcode >= 8)/100000), scientific = FALSE)
+
+sum(simhealthcode >= 8)
+```
+
+##### P-Value: For this simulation, the p value calculated was equal to 0.0002,  or a 0.02% probability that 8 out of 50 inspections would result in health code violation reports, assuming that the null hypothesis is true.
+
+##### Conclusion: Based off this data and the p-value being less than 0.05%, the null hypothesis does not seem plausible, therefore it is not likely that Gourmet Bites was being reported for health code violations at the average rate of 3%.
+
+\newpage
+
+# 3.
+
+```{r results = 'hide'}
+#setting the expected juror distribution based off the county's demographics and the actual representation of jurors selected, then getting the total number of jurors
+expected_distribution = c(group1 = 0.3, group2 = 0.25, group3 = 0.2, group4 = 0.15, group5 = 0.1)
+observed_counts =  c(group1 = 85, group2 = 56, group3 = 59, group4 = 27, group5 = 13)
+sum(observed_counts)
+
+#setting the amount of jurors to 240
+jurors = 240
+
+#defining a function to execute the chi squared formula
+chi_squared_statistic = function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+
+#simulating the chi squared result based off 10000 different simulated juries using the expected distribution
+num_simulations = 10000
+chi2_sim = do(num_simulations)*{
+  simulated_counts = rmultinom(1, jurors, expected_distribution)
+  this_chi2 = chi_squared_statistic(simulated_counts, jurors*expected_distribution)
+  c(chi2 = this_chi2) # return a vector with names and values
+}
+
+#calculating the chi squared value of the actual jury that was selected
+my_chi2 = chi_squared_statistic(observed_counts, jurors*expected_distribution)
+
+#plotting the distribution of simulated chi squared values
+ggplot(chi2_sim) + geom_histogram(aes(x = chi2), fill = 'plum4', col = 'black') + labs(title = "Distribution of the Goodness of Fit for Selected Jurors vs. Ethnic Groups")
+```
+```{r results = 'hide'}
+
+sum(chi2_sim >= 12.42638)/10000
+```
+
+##### Null Hypothesis: The selected jurors and their ethnic makeup closely resembles the county's actual ethnic distribution.
+
+##### Test Statistic: The chi-squared value of 12.426 for the observed jurors vs. the expected counts
+
+##### P-Value: The p-value for the observed chi-squared value is 0.014, or a 1.4% probability that the observed juror counts would occur assuming that the null hypothesis is true.
+
+##### Conclusion: Based off the data and simulations, it seems implausible that the if jurors selected actually followed the ethnic makeup of the county, the observed distribution would've occurred by pure chance, implying some level of systematic bias. To investigate further and get confirmation, we could look at all the trials that this judge has overseen rather than the mere 20 included in the observed counts.
+
+\newpage
+
+# 4.
+
+```{r}
+brown_sentences <- readLines("brown_sentences.txt")
+letterfreq <- read.csv("letter_frequencies.csv")
+
+calculate_chi_squared = function(sentence, freq_table) {
+  
+  # Ensure letter frequencies are normalized and sum to 1
+  freq_table$Probability = freq_table$Probability / sum(freq_table$Probability)
+  
+  # Remove non-letters and convert to uppercase
+  clean_sentence = gsub("[^A-Za-z]", "", sentence)
+  clean_sentence = toupper(clean_sentence)
+  
+  # Count the occurrences of each letter in the sentence
+  observed_counts = table(factor(strsplit(clean_sentence, "")[[1]], levels = freq_table$Letter))
+  
+  # Calculate expected counts
+  total_letters = sum(observed_counts)
+  expected_counts = total_letters * freq_table$Probability
+  
+  # Chi-squared statistic
+  chi_squared_stat = sum((observed_counts - expected_counts)^2 / expected_counts)
+  
+  return(chi_squared_stat)
+}
+
+num_sentences <- length(brown_sentences)  # Get total number of sentences
+chi_sq <- numeric(num_sentences)  # Pre-allocate vector for efficiency
+
+for (i in 1:num_sentences) {
+  chi_sq[i] <- calculate_chi_squared(brown_sentences[i], letterfreq)
+}
+
+chi2df <- data.frame(chi2 = chi_sq)
+
+ggplot(chi2df) + geom_histogram(aes(x = chi2), fill = 'plum4', col = 'black') + labs(title = "Distribution of the Goodness of Fit of Letter Frequency to English Sentences")
+```
+
+```{r}
+sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+sentencetest <- length(sentences)  # Get total number of sentences
+sentencechi2 <- numeric(sentencetest)  # Pre-allocate vector for efficiency
+
+for (i in 1:sentencetest) {
+  sentencechi2[i] <- calculate_chi_squared(sentences[i], letterfreq)
+}
+
+pvaluecount <- length(sentencechi2)
+sentencepvalue <- numeric(pvaluecount)
+
+for (i in 1:pvaluecount) {
+  sentencepvalue[i] <- round(sum(chi2df$chi2 >= sentencechi2[i])/56745, 3)
+}
+
+pvaluedf <- data.frame(sentence = c(1:10), pvalues = sentencepvalue)
+
+pvaluekable <- kable(pvaluedf, col.names = c("Sentence", "P-Value"))
+kable_styling(pvaluekable, bootstrap_options = "striped")
+```
+
+##### The sentence that has been watermarked by an LLM is sentence 6. I say this because this sentence is the only one with a p-value less than 0.01. A few other sentences are within the 0.05 to 0.08 range, but none get nearly as small as 0.009, therefore it's clear that this sentence does not follow the expected letter frequency by sentence, and has been produced by an LLM.
