@@ -1,0 +1,284 @@
+---
+title: "SDS Homework 7"
+author: "Daphne Huynh"
+date: "2025-04-03"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height=4, fig.width=7.5, fig.align = "center", warning=FALSE, tidy=TRUE, tidy.opts=list(width.cutoff=60), message=FALSE, echo = FALSE)
+```
+
+```{r}
+#libraries needed
+library(mosaic)
+library(MatchIt)
+library(ggplot2)
+library(kableExtra)
+```
+
+
+#### \href{https://github.com/giahandhuynh/315homework4}{\textcolor{blue}{GitHub Repository}}
+
+
+# 1.
+```{r results = 'hide'}
+armfold <- read.csv("armfold.csv")
+
+table(armfold$Sex) #getting total numbers for each group
+prop.table(table(armfold$LonR_fold, armfold$Sex), 2) #getting proportions of left arm on top for each group
+```
+
+## A.
+
+#### Male Students: 106
+#### Female Students: 111
+
+#### Proportion of Male Students w/ Left Arm on Top: 0.472
+#### Proportion of Female Students w/ Left Arm on Top: 0.423
+
+## B.
+
+#### The observed difference in proportions between the two groups, when males minus females, is equal to 0.049
+
+```{r results = 'hide'}
+#built in function
+prop.test(LonR_fold~Sex, data = armfold, success = 1)
+
+#setting values to handcalculate confint
+p1 = .472
+p2 = .423
+n1 = 106
+n2 = 111
+
+se = (((p1*(1-p1))/n1) + (p2*(1-p2))/n2)**0.5
+lower = 0.049 - (1.96*se)
+upper = 0.049 + (1.96*se)
+```
+
+
+## C.
+
+#### Standard Error Formula: The square root of (P1(1 - P1)) / N1 + (P2(1-P2)) / N2 where P1 and P2 are sample proportions and N1 and N2 are the sample sizes
+
+#### P1 = 0.472
+#### P2 = 0.423
+#### N1 = 106
+#### N2 = 111
+#### Z* = 1.96, since we are trying to calculate a 95% confidence interval
+
+#### The 95% confidence interval is (-0.093, 0.190)
+
+## D.
+
+#### If we were to take many samples of the entire body of undergraduate students at the Australian university, we would expect that 95% of the confidence intervals calculated would contain the true difference of proportions of males minus females.
+
+## E.
+
+#### The standard error calculated in Part C represents the flucuations of our sample difference in proportions from the population difference in proportions, or the standard deviation of our sampling distribution. This is measuring our uncertainty of our estimation of the true value.
+
+## F.
+
+#### The sampling distribution, in this context, is all the different difference in proportions of males minus females who fold their left arm on top that we would expect to see if we took many different samples of 106 males and 111 females from the undergraduate body at this university. The sample size and population would remain the same while the actual proportion results would vary.
+
+## G. 
+
+#### What justifies our usage of a normal distribution to approximate the sampling distribution of the difference in sample proportions is the Central Limit Theorem. The CLT states that we can create a normal distribution if the sample size is sufficiently large since the sample difference in proportions is an aggregation of nudges, and a large number of aggregations will always look normal.
+
+## H.
+
+#### I would respond to someone who claims "there's no sex difference in arm folding" when the 95% confidence interval for difference in proportions is [-0.01, 0.30] by saying: although there is no statistically significant evidence that there is a sex difference, since 0 is within the interval, but the difference could be as drastic as 0.30, therefore we cannot definitively claim that a difference is entirely non-existent.
+
+## I.
+
+#### If this experiement were to be repeated many times with different samples of university students, the confidence interval would be different across all the samples for two reasons. Firstly, since the basline of the confidence interval is the sample difference in proportions, each sample's estimate will differ slightly when different individuals are sampled. Secondly, because of this variance in the sample difference in proportions, the standard error will also change. However, across all these collected intervals, 95% of them should capture the true population's difference in proportions.
+
+\newpage
+
+# 2.
+
+```{r results = 'hide'}
+turnout <- read.csv("turnout.csv")
+turnout$voted1998[turnout$voted1998 == 1] = "TRUE"
+turnout$voted1998[turnout$voted1998 == 0] = "FALSE"
+
+prop.table(table(turnout$voted1998, turnout$GOTV_call), 2) #getting proportions for each group
+
+prop.test(voted1998~GOTV_call, data = turnout, success = 1)
+```
+
+## A.
+
+#### Proportion of those who recieved a GOTV call and voted in 1998: 0.648
+#### Proportion of those who did NOT recieve a GOTV call and voted in 1998: 0.444
+#### Confidence interval for the difference in proportions: (0.141, 0.266)
+
+## B.
+
+### Voted in 1996 as a confounder:
+
+
+```{r results = 'hide'}
+voted1996props <- turnout %>%
+  group_by(GOTV_call) %>%
+  summarize(Vote1996 = mean(voted1996))
+votedpropstab <- data.frame("Didnt Recieve GOTV Call" = 0.531, "Recieved GOTV Call" = 0.713)
+
+prop.test(voted1996~GOTV_call, data = turnout)
+```
+
+```{r}
+#display picture evidence of confounding
+kable_styling(kable(votedpropstab))
+ggplot(turnout) + geom_bar(aes(x = voted1996), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+```
+
+
+#### 95% Confidence interval for a difference in proportions of vote status in 1996 to GOTV call status: (0.122, 0.241)
+
+#### Since this confidence interval does not contain 0, there is statistically significant evidence that there is a difference in proportions and those who voted in 1996 had an increased chance of recieiving a GOTV call prior to the 1998 vote.
+
+\newpage
+
+### Age as a confounder:
+
+
+```{r results = 'hide'}
+mean(AGE~GOTV_call, data = turnout)
+meantable <- data.frame("Didnt Recieve GOTV Call" = 49.425, "Recieved GOTV Call" = 58.308)
+
+#calculate difference in means confint for age of those who received a call vs didn't receive a call
+t.test(AGE~GOTV_call, data = turnout)
+```
+
+```{r}
+#display picture evidence of confounding
+kable_styling(kable(meantable))
+ggplot(turnout) + geom_histogram(aes(x = AGE, y = after_stat(density)), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+``` 
+
+
+#### 95% Confidence interval for a difference in means of age based on GOTV call status: (6.370, 11.395)
+
+#### Because this confidence interval does not contain 0, there is statistically significant evidence of a difference in means for age based on whether they recieved a GOTV call, and those who were older had an increased chance of recieving a call prior to the 1998 vote.
+
+\newpage
+
+### Major Party Registration as a confounder:
+
+```{r results = 'hide'}
+partyprop <- turnout %>%
+  group_by(GOTV_call) %>%
+  summarize(partyprops = mean(MAJORPTY))
+partyprop
+
+partyproptab <- data.frame("Didnt Recieve GOTV Call" = 0.745, "Recieved GOTV Call" = 0.802)
+
+prop.test(MAJORPTY~GOTV_call, data = turnout)
+```
+
+```{r}
+#display picture evidence of confounding
+kable_styling(kable(partyproptab))
+ggplot(turnout) + geom_bar(aes(x = MAJORPTY), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+```
+
+#### 95% Confidence interval for a difference in proportions of major party registration status to GOTV call status: (0.004, 0.109)
+
+#### Since this confidence interval, although gets very close to, doesn't include 0, there is statistically significant evidence of a difference in likelihood for someone to recieve a GOTV call if they were registered under one of the two major political parties.
+
+```{r results = 'hide'}
+#matching with a ratio of 5 based off GOTV call as the treatment and age, majorpty, and voted1996 as covariates
+turnout_match = matchit(GOTV_call ~ AGE + MAJORPTY + voted1996, data = turnout, ratio=5)
+
+#extracts matched data
+turnout_matched = match.data(turnout_match)
+```
+
+\newpage
+
+### Voted in 1996 after matching:
+
+```{r results = 'hide'}
+voted1996propsmatched <- turnout_matched %>%
+  group_by(GOTV_call) %>%
+  summarize(Vote1996 = mean(voted1996))
+voted1996propsmatched
+
+votedpropstabmatch <- data.frame("Didnt Recieve GOTV Call" = 0.713, "Recieved GOTV Call" = 0.713)
+
+prop.test(voted1996~GOTV_call, data = turnout_matched)
+```
+
+```{r}
+kable_styling(kable(votedpropstabmatch))
+ggplot(turnout_matched) + geom_bar(aes(x = voted1996), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+```
+
+#### 95% Confidence Interval after matching: (-0.062, 0.062)
+
+#### Not only are the proportions identitcal after matching, but the confidence interval is perfectly centered around 0. This shows a balanced difference in proportions for those who voted in 1996 with their GOTV call status in 1998 and proves the effect of matching for this confounding variable.
+
+\newpage
+
+### Age after matching:
+
+```{r results = 'hide'}
+mean(AGE~GOTV_call, data = turnout_matched)
+meantablematched <- data.frame("Didnt Recieve GOTV Call" = 58.266, "Recieved GOTV Call" = 58.308)
+
+#calculate difference in means confint for age of those who received a call vs didn't receive a call
+t.test(AGE~GOTV_call, data = turnout_matched)
+```
+
+```{r}
+#display picture evidence of post-matching results
+kable_styling(kable(meantablematched))
+ggplot(turnout_matched) + geom_histogram(aes(x = AGE, y = after_stat(density)), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+```
+
+#### 95% Confidence Interval after matching: (-2.760, 2.678)
+
+#### Although they are not 100% identitcal as they were for voted in 1996, the average age of those who recieved a GOTV call compared to those who did now is off by less than one year, a large improvement from the nearly 10 year difference prior to matching. The confidence interval is also centered close to 0.
+
+\newpage
+
+### Major Party Registration after matching:
+
+```{r results = 'hide'}
+partypropmatched <- turnout_matched %>%
+  group_by(GOTV_call) %>%
+  summarize(partyprops = mean(MAJORPTY))
+partypropmatched
+
+partyproptabmatch <- data.frame("Didnt Recieve GOTV Call" = 0.807, "Recieved GOTV Call" = 0.802)
+
+prop.test(MAJORPTY~GOTV_call, data = turnout_matched)
+```
+
+```{r}
+kable_styling(kable(partyproptabmatch))
+ggplot(turnout_matched) + geom_bar(aes(x = MAJORPTY), fill = 'plum4', col = 'black') + facet_wrap(~GOTV_call)
+```
+
+#### 95% Confidence Interval after matching: (-0.062, 0.051)
+
+#### The new proportions based off major party registration status and GOTV call status are much more similar for the sample, and the confidence interval is very close to having 0 as the center. The proportions being so much closer after matching shows that party registration is no longer a confounder.
+
+\newpage
+
+### GOTV Call vs. Voted in 1998 after matching:
+
+```{r results = 'hide'}
+table(turnout_matched$voted1998, turnout_matched$GOTV_call)
+
+prop.table(table(turnout_matched$voted1998, turnout_matched$GOTV_call), 2) #getting proportions for each group
+
+prop.test(voted1998~GOTV_call, data = turnout_matched)
+```
+
+#### Proportion of those who recieved a GOTV call and voted in 1998: 0.648
+#### Proportion of those who did NOT recieve a GOTV call and voted in 1998: 0.569
+#### Confidence interval for the difference in proportions: (0.010, 0.147)
+
+#### There is undoubtedly an effect of GOTV call status and voting in 1998. We are 95% sure that the true difference in proportion of voters in 1998 who did and did not recieve a GOTV call is somewhere between 0.010 and 0.147. Even after matching, zero is still not included in the confidence interval and provides further statistically significant evidence to this fact. However, matching and accounting for confounding variables shrunk the possible differences calculated in the bounds of the confidence interval. Therefore, the analysis points to an effect of a smaller size than may be initially believed by the initial confidence interval, but an effect nonetheless.
